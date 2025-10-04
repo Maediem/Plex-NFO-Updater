@@ -35,7 +35,7 @@ This README describes what the script does, how to configure it, how to run it, 
 - Python 3.8+
 - pip to install dependencies (script will attempt to auto-install missing third-party packages)
 - A working Plex server with a writable token (see Configuration)
-- Recommended (but optional): run from a machine that has access to the same filesystem the Plex server uses if you rely on server-side URL poster upload.
+- Run from the Plex server machine.
 
 ### Third-party Python packages used:
 
