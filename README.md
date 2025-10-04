@@ -3,6 +3,7 @@
 **TODO**: 
 - Update the show itself (not only the episodes)
 - Change emoji for colors: https://stackoverflow.com/questions/12492810/python-how-can-i-make-the-ansi-escape-codes-to-work-also-in-windows#64222858
+- Add verbose option to print more messages and use a custom print message function
 - Add reference to Plex Official API: https://developer.plex.tv/pms/
 - Review code
 - Update README
