@@ -1,5 +1,7 @@
 # Plex-NFO-Updater
 
+**TODO**: Update the show itself (not only the episodes)
+
 A Python Script that scans local media directories for .nfo and poster files and applies title/summary/poster updates to matching Plex movies or TV episodes.
 
 This README describes what the script does, how to configure it, how to run it, expected NFO format, troubleshooting tips, and one recommended code snippet to make editing metadata more robust.
