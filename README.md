@@ -35,7 +35,9 @@ This README describes what the script does, how to configure it, how to run it, 
 - Python 3.8+
 - pip to install dependencies (script will attempt to auto-install missing third-party packages)
 - A working Plex server with a writable token (see Configuration)
-- Run from the Plex server machine.
+- Episode NFO files should have the same file name as the video file (only extension should be different)
+- Show NFO file should be name: TODO
+- Running Python Script on the Plex server machine.
 
 ### Third-party Python packages used:
 
@@ -71,8 +73,6 @@ PLEX_TOKEN=xxxxxxxxxxxxxxxxxxxxxxxxxxxx
 
 - <code>PLEX_URL</code>: full base URL to your Plex server (no trailing / required). Common default: http://<plex-host>:32400.
 - <code>PLEX_TOKEN</code>: a Plex token with write permissions; ideally a server/admin token if you expect to edit metadata.
-
-Security note: Never commit .env with your token to public repos.
 
 ---
 
