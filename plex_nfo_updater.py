@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 
+# Plex Official API: https://developer.plex.tv/pms/
+
 ##################
 # IMPORT MODULES #
 ##################
