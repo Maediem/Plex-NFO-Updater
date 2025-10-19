@@ -10,25 +10,24 @@ import sys
 
 # Import Python module dynamically. If not installed, attempt to install via pip.
 def import_python_module(module_name, package_name=None, from_import=None):
-    """
-    Dynamically import a module; if missing, attempt to install the package via pip.
-    On failure, provide clearer instructions rather than silently exiting.
-    """
+    # Dynamically import a module; if missing, attempt to install the package via pip.
+    # On failure, provide clearer instructions rather than silently exiting.
+
     try:
         module = importlib.import_module(module_name)
     except ImportError:
         pkg = package_name or module_name.split(".")[0]
-        print(f"⚠️  Module '{module_name}' not found. Attempting to install '{pkg}' via pip...")
-        
+        print(f"WARNING: Module '{module_name}' not found. Attempting to install '{pkg}' via pip...")
+
         try:
             subprocess.check_call([sys.executable, "-m", "pip", "install", pkg])
         except subprocess.CalledProcessError as exc:
-            print(f"❌ Failed to install '{pkg}' automatically: {exc}")
+            print(f"ERROR: Failed to install '{pkg}' automatically: {exc}")
             print("Please install the dependency manually and re-run (recommended inside a virtualenv):")
             print(f"  python -m venv .venv && ./.venv/bin/pip install {pkg}  # macOS/Linux")
             print(f"  py -3 -m venv .venv && .\\.venv\\Scripts\\pip install {pkg}  # Windows (PowerShell/CMD)")
             sys.exit(1)
-        
+
         # try import again
         module = importlib.import_module(module_name)
 
@@ -36,7 +35,7 @@ def import_python_module(module_name, package_name=None, from_import=None):
         try:
             return getattr(module, from_import)
         except AttributeError:
-            print(f"❌ '{from_import}' not found in '{module_name}'.")
+            print(f"ERROR: '{from_import}' not found in '{module_name}'.")
             sys.exit(1)
 
     return module
@@ -45,6 +44,7 @@ def import_python_module(module_name, package_name=None, from_import=None):
 # Standard library
 os = import_python_module("os")
 time = import_python_module("time")
+datetime = import_python_module("datetime")
 argparse = import_python_module("argparse")
 ET = import_python_module("xml.etree.ElementTree")
 re = import_python_module("re")
@@ -65,16 +65,36 @@ load_dotenv()
 # VARIABLES #
 #############
 
-# Configure your media root structure here
+# ---- CONFIGURATIONS ----
 # The script will look for directories inside these (e.g. ".../tv/ShowName" or ".../movies/MovieName")
-ROOT_MOVIES_SERIES_DIR = ["tv", "movies"]
+ROOT_MOVIES_SERIES_DIR = ["tv", "movies", "series"]
+
+DEBUG = True  # Enable/disable console output
+LOGGING = True # Enable/disable logging to LOG_FILE
+SCRIPT_NAME = "Plex NFO Updater" # Used in some prints/logs
+LOG_FILE = f"plex_nfo_updater{datetime.date.today()}.log" # Log file path
+# ------------------------
+
+# Enable ANSI escape characters in terminal (for Windows)
+os.system("")
+
+# ANSI colors for terminal output (used only for console)
+COLOR = {
+    "BLUE": "\033[94m",
+    "CYAN": "\033[96m",
+    "GREEN": "\033[92m",
+    "YELLOW": "\033[93m",
+    "ORANGE": "\033[38;5;208m",
+    "RED": "\033[91m",
+    "RESET": "\033[0m",
+}
 
 # Plex server details (must be in environment or .env file)
 PLEX_URL = os.environ.get("PLEX_URL")
 PLEX_TOKEN = os.environ.get("PLEX_TOKEN")
 
 if not PLEX_URL or not PLEX_TOKEN:
-    print("\nERROR: PLEX_URL and PLEX_TOKEN must be set in a .env file or environment variables.")
+    print(f"\n{COLOR['RED']}ERROR{COLOR['RESET']}: PLEX_URL and PLEX_TOKEN must be set in a .env file or environment variables.")
     print("Create a .env with:")
     print("  PLEX_URL=http://your-plex:32400")
     print("  PLEX_TOKEN=xxxxxxxxxxxxxxxx")
@@ -86,13 +106,13 @@ PLEX_URL = PLEX_URL.rstrip("/")
 # Connect to Plex
 try:
     plex = PlexServer(PLEX_URL, PLEX_TOKEN)
-    print(f"✅ Connected to Plex at {PLEX_URL}\n")
+    print(f"{COLOR['GREEN']}SUCCESS{COLOR['RESET']}: Connected to Plex at {PLEX_URL}\n")
 except Exception as e:
-    print(f"❌ Failed to connect to Plex at {PLEX_URL}: {e}\n")
+    print(f"{COLOR['RED']}ERROR{COLOR['RESET']}: Failed to connect to Plex at {PLEX_URL}: {e}\n")
     sys.exit(1)
 
 # Parse arguments
-parser = argparse.ArgumentParser(description="Plex NFO Manager (Movies/Series)")
+parser = argparse.ArgumentParser(description=f"{SCRIPT_NAME} (Movies/Series)")
 parser.add_argument("--dry-run", action="store_true", help="Don't perform edits/uploads; just print intended actions")
 args = parser.parse_args()
 DRY_RUN = args.dry_run
@@ -108,10 +128,8 @@ POST_UPLOAD_WAIT = 0.4
 
 # Enable auto complete TAB
 def enable_tab_completion():
-    """
-    Try to enable tab completion for input paths.
-    On Windows, prefer 'pyreadline3' (if installed). Fall back gracefully.
-    """
+    # Try to enable tab completion for input paths.
+    # On Windows, prefer 'pyreadline3' (if installed). Fall back gracefully.
     try:
         if sys.platform.startswith("win"):
             # Try pyreadline3 first, then pyreadline if available
@@ -166,27 +184,55 @@ def enable_tab_completion():
 
 enable_tab_completion()
 
+# Central logging function
+def log(level, message):
+    # Always uppercase
+    level = level.upper()
+
+    now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    plain_msg = f"{now} [{level}] {message}"
+
+    # Skip debug logs entirely if DEBUG is off
+    if level == "DEBUG" and not DEBUG:
+        return
+
+    # Write to file
+    if LOGGING:
+        with open(LOG_FILE, "a", encoding="utf-8") as lf:
+            lf.write(plain_msg + "\n")
+
+    # Color selection
+    color = {
+        "DEBUG": COLOR["CYAN"],
+        "INFO": COLOR["BLUE"],
+        "SUCCESS": COLOR["GREEN"],
+        "WARN": COLOR["YELLOW"],
+        "ERROR": COLOR["RED"]
+    }.get(level, COLOR["ORANGE"])
+
+    print(f"{now} [{color}{level}{COLOR['RESET']}] {message}")
+
 
 # Prompt the user with choices
 def prompt_choice(prompt, choices):
     print(prompt)
 
     for i, c in enumerate(choices, start=1):
-        print(f"  {i}. {c}")
-    
+        print(f"  {COLOR['BLUE']}{i}{COLOR['RESET']}. {c}")
+
     while True:
         s = input("Choose number (or 'q' to quit): ").strip()
-        
+
         if s.lower() == "q":
             print("Quitting.")
             sys.exit(0)
-        
+
         if s.isdigit():
             idx = int(s) - 1
             if 0 <= idx < len(choices):
                 return idx
-        
-        print("Invalid choice, try again.")
+
+        print(f"{COLOR['RED']}Invalid{COLOR['RESET']} choice, try again.")
 
 
 # Return absolute, normalized path without trailing slashes
@@ -215,12 +261,12 @@ def normalize_path(p):
 # Recursively scan for all .nfo files inside `scan_path`
 def find_all_nfo_files(scan_path):
     nfos = []
-    
+
     for root, _, files in os.walk(scan_path):
         for f in files:
             if os.path.splitext(f)[1].lower() == ".nfo":
                 nfos.append(os.path.join(root, f))
-    
+
     return sorted(nfos)
 
 
@@ -254,13 +300,13 @@ def get_top_level_media_dirs(nfo_files):
 #   Example: Keep /mnt/tv/Show instead of both /mnt/tv/Show and /mnt/tv/Show/Season 01
 def reduce_dirs_to_top_level(dirs):
     dirs_sorted = sorted(set(dirs), key=lambda x: len(x))
-    
+
     kept = []
-    
+
     for d in dirs_sorted:
         if not any(os.path.commonpath([d, k]) == k for k in kept):
             kept.append(d)
-    
+
     return kept
 
 
@@ -268,7 +314,7 @@ def reduce_dirs_to_top_level(dirs):
 def strip_diacritics(text):
     nf = unicodedata.normalize("NFD", text)
     filtered = "".join(ch for ch in nf if not unicodedata.combining(ch))
-    
+
     return unicodedata.normalize("NFC", filtered)
 
 
@@ -290,13 +336,13 @@ def map_episode_to_show_if_needed(item):
         except Exception:
             # Fallback if item.show() fails → try fetching by grandparent key
             gkey = getattr(item, "grandparentRatingKey", None) or getattr(item, "grandparentKey", None)
-            
+
             if gkey:
                 try:
                     return plex.fetchItem(gkey)
                 except Exception:
                     return None
-            
+
             return None
     else:
         return item
@@ -308,48 +354,48 @@ def filter_results_by_title(query, results):
     query_norm = strip_diacritics(query).lower()
     query_words = [w for w in re.findall(r"[a-zA-Z0-9']+", query_norm)]
     filtered = []
-    
+
     for r in results:
         title = getattr(r, "title", "")
         title_norm = strip_diacritics(title).lower()
-        
+
         if all(w in title_norm for w in query_words):
             filtered.append(r)
-    
+
     return filtered
 
 
 # Search Plex with multiple fallback strategies
 def search_plex_for_title(title, search_filter="all"):
-    
+
     # Internal helper to perform search and filter by type
     def do_search(q):
         try:
             raw = plex.search(q)
         except Exception:
             raw = []
-        
+
         by_key = {}
-        
+
         for r in raw:
             mapped = map_episode_to_show_if_needed(r) or r
-            
+
             if not mapped:
                 continue
-            
+
             t = getattr(mapped, "type", "").lower()
-            
+
             if search_filter == "tv" and "show" not in t:
                 continue
-            
+
             if search_filter == "movies" and "movie" not in t:
                 continue
-            
+
             key = getattr(mapped, "ratingKey", None)
-            
+
             if key and key not in by_key:
                 by_key[key] = mapped
-        
+
         return list(by_key.values())
 
     # 1. Try raw
@@ -361,8 +407,8 @@ def search_plex_for_title(title, search_filter="all"):
     # 2. Try normalized (strip diacritics)
     title_norm = strip_diacritics(title)
     if title_norm != title:
-        print(f"  ⚠️  Normalized title: '{title_norm}'")
-        
+        log("WARN", f"Normalized title to '{title_norm}'")
+
         results = do_search(title_norm)
         results = filter_results_by_title(title_norm, results)
         if results:
@@ -372,10 +418,10 @@ def search_plex_for_title(title, search_filter="all"):
     m1 = re.match(r"^[\w\-\' ]+", title_norm)
     if m1:
         fallback1 = clean_title_suffix(m1.group(0).strip())
-        
+
         if fallback1 and fallback1 != title_norm:
-            print(f"  ⚠️  Fallback 1: '{fallback1}'")
-            
+            log("WARN", f"Fallback (#1) to '{fallback1}'")
+
             results = do_search(fallback1)
             results = filter_results_by_title(fallback1, results)
             if results:
@@ -386,8 +432,8 @@ def search_plex_for_title(title, search_filter="all"):
     if m2:
         fallback2 = clean_title_suffix(m2.group(0).strip())
         if fallback2 and fallback2 not in (title_norm, locals().get("fallback1", "")):
-            print(f"  ⚠️  Fallback 2: '{fallback2}'")
-            
+            log("WARN", f"Fallback (#2) to '{fallback2}'")
+
             results = do_search(fallback2)
             results = filter_results_by_title(fallback2, results)
             if results:
@@ -400,18 +446,18 @@ def search_plex_for_title(title, search_filter="all"):
 def choose_plex_item(candidates, hint):
     if not candidates:
         return None
-    
+
     if len(candidates) == 1:
-        print(f"One Plex candidate found for '{hint}': {getattr(candidates[0],'title',str(candidates[0]))}")
+        log("INFO", f"One Plex candidate found for '{hint}': {getattr(candidates[0],'title',str(candidates[0]))}")
         return candidates[0]
-    
+
     display = []
     for c in candidates:
         title = getattr(c, "title", str(c))
         typ = getattr(c, "type", getattr(c, "TYPE", "")) or c.__class__.__name__
         lib = getattr(c, "librarySectionTitle", "")
         display.append(f"{title}  [{typ}]  (library: {lib})")
-    
+
     idx = prompt_choice(f"Multiple Plex matches found for '{hint}'. Choose:", display)
     return candidates[idx]
 
@@ -419,9 +465,9 @@ def choose_plex_item(candidates, hint):
 # Safe edit and poster helpers (respect DRY_RUN by printing only)
 def safe_edit_item(item, new_title, new_summary):
     if DRY_RUN:
-        print(f"    [DRY-RUN] Would edit item '{getattr(item,'title', '')}': title -> '{new_title}', summary length -> {len(new_summary)}")
+        log("INFO", f"[DRY-RUN] Would edit item '{getattr(item,'title', '')}': title -> '{new_title}', summary length -> {len(new_summary)}")
         return True, "dry-run"
-    
+
     try:
         # Ensure we have a full object (avoid partial-object issues)
         try:
@@ -440,7 +486,7 @@ def safe_edit_item(item, new_title, new_summary):
 
         # Use batchEdits to perform both edits together
         item.batchEdits()
-        
+
         # Pass locked=True to lock field after edit (or locked=False if you prefer unlocked)
         item.editTitle(new_title, locked=True)
         item.editSummary(new_summary, locked=True)
@@ -457,7 +503,7 @@ def safe_edit_item(item, new_title, new_summary):
         cur_summary = getattr(item, "summary", None) or ""
         if (cur_title and cur_title.strip() == (new_title or "").strip()) and \
            ((new_summary or "").strip() in (cur_summary or "").strip()):
-            print(f"    Edited item (ratingKey={getattr(item,'ratingKey', 'unknown')}): title -> '{cur_title}'")
+            log("INFO", f"Edited item (ratingKey={getattr(item,'ratingKey', 'unknown')}): title -> '{cur_title}'")
             return True, "edited"
         else:
             return False, f"Verification failed: server shows title='{cur_title}', summary_len={len(cur_summary)}"
@@ -471,7 +517,7 @@ def http_upload_poster_fallback(rating_key, image_path):
     # Multipart POST fallback to /library/metadata/{ratingKey}/posters.
     upload_url = f"{PLEX_URL}/library/metadata/{rating_key}/posters"
     headers = {"X-Plex-Token": PLEX_TOKEN, "Accept": "*/*", "User-Agent": "PlexNFOUpdater/1.0"}
-    
+
     try:
         with open(image_path, "rb") as fh:
             files = {"file": (os.path.basename(image_path), fh, "image/jpeg")}
@@ -481,15 +527,15 @@ def http_upload_poster_fallback(rating_key, image_path):
     except Exception as e:
         # fallthrough
         pass
-    
+
     # url-style fallback (server must access path)
     try:
         url_with_param = upload_url + "?url=" + quote_plus(image_path) + "&X-Plex-Token=" + quote_plus(PLEX_TOKEN)
         resp = requests.post(url_with_param, headers=headers, timeout=30)
-        
+
         if 200 <= resp.status_code < 300:
             return True, f"URL upload OK ({resp.status_code})"
-        
+
         return False, f"URL upload status {resp.status_code}"
     except Exception as e:
         return False, f"HTTP upload exception: {e}"
@@ -497,16 +543,15 @@ def http_upload_poster_fallback(rating_key, image_path):
 
 # UsePlex API first (prefered) and fallback to HTTP
 def upload_poster_and_refresh(item, image_path):
-    """
-    Upload poster (plexapi first, then HTTP fallback). Trigger single refresh().
-    In DRY_RUN: skip upload/refresh, just print intended actions.
-    """
+    # Upload poster (plexapi first, then HTTP fallback). Trigger single refresh().
+    # DRY_RUN: skip upload/refresh, just print intended actions.
+
     rk = getattr(item, "ratingKey", None)
     if not rk:
         return False, "No ratingKey"
 
     if DRY_RUN:
-        print(f"    [DRY-RUN] Would upload poster for ratingKey {rk} from '{image_path}' and call refresh().")
+        log("INFO", f"[DRY-RUN] Would upload poster for ratingKey {rk} from '{image_path}' and call refresh().")
         return True, "dry-run"
 
     # Try plexapi uploadPoster (filepath=... or path)
@@ -519,9 +564,9 @@ def upload_poster_and_refresh(item, image_path):
         except Exception:
             # other exception propagate to fallback
             raise
-        
+
         time.sleep(POST_UPLOAD_WAIT)
-        
+
         try:
             item.refresh()
         except Exception:
@@ -529,9 +574,9 @@ def upload_poster_and_refresh(item, image_path):
                 item.reload()
             except Exception:
                 pass
-        
-        print(f"    uploadPoster invoked for ratingKey {rk}; refresh requested.")
-        
+
+        log("INFO", f"uploadPoster invoked for ratingKey {rk}; refresh requested.")
+
         return True, "plexapi"
     except Exception as e:
         # fallback to HTTP multipart
@@ -544,7 +589,7 @@ def upload_poster_and_refresh(item, image_path):
                     item.reload()
                 except Exception:
                     pass
-            print(f"    HTTP fallback upload succeeded for ratingKey {rk}: {msg}; refresh requested.")
+            log("WARN", f"HTTP fallback upload succeeded for ratingKey {rk}: {msg}; refresh requested.")
             return True, "http-fallback"
         else:
             return False, f"Poster upload failed: {msg}"
@@ -555,8 +600,10 @@ def upload_poster_and_refresh(item, image_path):
 #-------------
 # Iterate seasons/episodes, find local metadata files and apply NFO edits and upload poster images
 def process_show_directory(show_item, dir_path):
-    print(f"\n=== Processing SHOW '{getattr(show_item,'title',dir_path)}' ===")
-    
+    show_name = getattr(show_item,'title',dir_path)
+
+    print(f"\n=== Processing SHOW '{show_name}' ===")
+
     # count seasons/episodes for user
     try:
         seasons = list(show_item.seasons())
@@ -564,22 +611,22 @@ def process_show_directory(show_item, dir_path):
         tot_eps = sum(len(s.episodes()) for s in seasons)
     except Exception:
         tot_seasons = tot_eps = 0
-    
-    print(f"  Show has ~{tot_seasons} seasons and ~{tot_eps} episodes (Plex estimate).")
-    print(f"  Scanning local directory for metadata: {dir_path}")
+
+    log("DEBUG", f"Show '{show_name}' has ~{tot_seasons} seasons and ~{tot_eps} episodes (Plex estimate).")
+    log("INFO", f"Scanning local directory for metadata for show '{show_name}': {dir_path}")
 
     # Build mapping of basename -> {nfo,image}
     metadata_files = {}
     for root, _, files in os.walk(dir_path):
         for fname in files:
             ext = os.path.splitext(fname)[1].lower()
-            
+
             if ext in (".nfo", ".jpg", ".jpeg", ".png"):
                 base = os.path.splitext(fname)[0].lower()
                 metadata_files.setdefault(base, {})
                 metadata_files[base][('nfo' if ext == ".nfo" else 'image')] = os.path.join(root, fname)
 
-    print(f"  Found {len(metadata_files)} metadata file groups locally (by base filename).")
+    log("DEBUG", f"Found {len(metadata_files)} metadata file groups locally (by base filename) for show '{show_name}'.")
 
     failures = []
     updated_count = 0
@@ -588,19 +635,22 @@ def process_show_directory(show_item, dir_path):
     for season in show_item.seasons():
         for episode in season.episodes():
             show_name = getattr(show_item,'title')
-            
+            show_name_season_episode=f"{show_name} - S{season.index}E{episode.index}"
+
             ep_title = getattr(episode, "title", f"S{season.index}E{episode.index}")
-            print(f"\n  Processing Episode: '{ep_title}' (S{season.index}E{episode.index})")
-            
+            if DEBUG:
+                print() # Printing empty line for better visibility
+                log("DEBUG", f"{show_name_season_episode}: Processing Episode '{ep_title}' (S{season.index}E{episode.index})")
+
             try:
                 file_path = episode.media[0].parts[0].file
             except Exception:
-                print("    Could not determine media file path for this episode; skipping.")
+                log("WARN", f"{show_name_season_episode}: Could not determine media file path. Skipping.")
                 failures.append((f"{show_name} --> {ep_title}", "no media"))
                 continue
-            
+
             base_file = os.path.splitext(os.path.basename(file_path))[0].lower()
-            print(f"    Local file base: {base_file}")
+            log("DEBUG", f"{show_name_season_episode}: Local file base '{base_file}'")
 
             # Try to match by base filename
             matched_key = None
@@ -610,56 +660,57 @@ def process_show_directory(show_item, dir_path):
                     break
 
             if not matched_key:
-                print("    No local NFO/image matched for this episode; skipping.")
+                log("WARN", f"{show_name_season_episode}: No local NFO/image matched. Skipping.")
                 continue
 
             md = metadata_files[matched_key]
-            print(f"    Matched metadata base: '{matched_key}' -> {md.keys()}")
+            log("DEBUG", f"{show_name_season_episode}: Matched metadata base '{matched_key}' --> {md.keys()}")
 
             # NFO
             if "nfo" in md:
                 nfo_path = md["nfo"]
-                print(f"    Found NFO: {nfo_path}")
-                
+                log("DEBUG", f"{show_name_season_episode}: Found NFO '{nfo_path}'")
+
                 try:
                     tree = ET.parse(nfo_path)
                     root = tree.getroot()
-                    
+
                     new_title = (root.findtext("title") or episode.title or "").strip()
                     new_summary = (root.findtext("plot") or getattr(episode, "summary", "") or "").strip()
-                    print(f"    Will set title: '{new_title}' (len summary: {len(new_summary)})")
-                    
+                    log("DEBUG", f"{show_name_season_episode}: Will set title to '{new_title}' (len summary: {len(new_summary)})")
+
                     ok, msg = safe_edit_item(episode, new_title, new_summary)
                     if not ok:
-                        print(f"    Edit failed: {msg}")
+                        log("WARN", f"{show_name_season_episode} edit failed: {msg}")
                         failures.append((nfo_path, f"Edit failed: {msg}"))
                     else:
                         updated_count += 1
                 except Exception as e:
-                    print(f"    NFO parse error: {e}")
+                    log("WARN", f"{show_name_season_episode} NFO parse error: {e}")
                     failures.append((nfo_path, f"NFO parse error: {e}"))
             else:
-                print("    No NFO found for this match.")
+                log("DEBUG", f"{show_name_season_episode}: No NFO found.")
 
             # Image / poster
             if "image" in md:
                 image_path = md["image"]
-                print(f"    Found image candidate: {image_path}")
-                
+                log("DEBUG",f"{show_name_season_episode}: Found image candidate '{image_path}'")
+
                 if not os.path.exists(image_path):
-                    print("    Image file missing on disk.")
+                    log("WARN", "{show_name_season_episode} image file missing on disk.")
                     failures.append((f"{show_name} --> {ep_title}", "image missing"))
                 else:
                     ok, msg = upload_poster_and_refresh(episode, image_path)
                     if ok:
                         poster_count += 1
                     else:
-                        print(f"    Poster upload failed: {msg}")
+                        log("WARN" f"{show_name_season_episode} poster upload failed: {msg}")
                         failures.append((image_path, f"Poster upload failed: {msg}"))
             else:
-                print("    No image candidate found for this match.")
+                log("DEBUG", f"{show_name_season_episode}: No image candidate found for this match.")
 
-    print(f"\n  Show processing complete. Episodes updated: {updated_count}, posters attempted: {poster_count}")
+    print() # Write empty line for visibility
+    log("INFO", f"'{show_name}' processing complete. Episodes updated: {updated_count}, posters attempted: {poster_count}")
     return failures
 
 
@@ -668,58 +719,63 @@ def process_show_directory(show_item, dir_path):
 #-------
 def process_movie_directory(movie_item, dir_path):
     print(f"\n=== Processing MOVIE '{getattr(movie_item,'title',dir_path)}' ===")
-    print(f"  Scanning directory for NFO/poster: {dir_path}")
+    movie_name = getattr(movie_item,'title',dir_path)
+
+    log("DEBUG", f"{movie_name}: Scanning directory for NFO/poster '{dir_path}'")
 
     nfo_candidate = None
     image_candidate = None
-    
+
     for root, _, files in os.walk(dir_path):
         for fname in files:
             ext = os.path.splitext(fname)[1].lower()
             full = os.path.join(root, fname)
-            
+
             if not nfo_candidate and ext == ".nfo":
                 nfo_candidate = full
-            
+
             if not image_candidate and ext in (".jpg", ".jpeg", ".png"):
                 image_candidate = full
-        
+
         if nfo_candidate and image_candidate:
             break
 
     failures = []
-    
+
     if nfo_candidate:
-        print(f"  Found NFO: {nfo_candidate}")
+        log("DEBUG", f"{movie_name}: Found NFO: {nfo_candidate}")
         try:
             tree = ET.parse(nfo_candidate)
             root = tree.getroot()
+
             new_title = (root.findtext("title") or movie_item.title or "").strip()
             new_summary = (root.findtext("plot") or getattr(movie_item, "summary", "") or "").strip()
-            print(f"  Will set movie title: '{new_title}' (summary len={len(new_summary)})")
+            log("DEBUG", f"{movie_name}: Will set movie title to '{new_title}' (summary len={len(new_summary)})")
+
             ok, msg = safe_edit_item(movie_item, new_title, new_summary)
             if not ok:
-                print(f"  Edit failed: {msg}")
+                log("WARN", f"{movie_name} edit failed: {msg}")
                 failures.append(("movie_edit", msg))
+
         except Exception as e:
-            print(f"  NFO parse error: {e}")
+            log("WARN", f"{movie_name} NFO parse error: {e}")
             failures.append(("movie_nfo_parse", str(e)))
     else:
-        print("  No NFO found for movie.")
+        log("DEBUG", f"{movie_name}: No NFO found for movie.")
 
     if image_candidate:
-        print(f"  Found poster image: {image_candidate}")
+        log("DEBUG", f"{movie_name}: Found poster image '{image_candidate}'")
         if not os.path.exists(image_candidate):
-            print("  Image file missing.")
+            log("WARN", f"{movie_name} image file missing.")
             failures.append(("movie_poster", "image missing"))
         else:
             ok, msg = upload_poster_and_refresh(movie_item, image_candidate)
             if not ok:
-                print(f"  Poster upload failed: {msg}")
+                log("WARN", f"{movie_name} poster upload failed: {msg}")
                 failures.append(("movie_poster", msg))
     else:
-        print("  No image found for movie.")
-    
+        log("DEBUG", f"{movie_name}: No image found for movie.")
+
     return failures
 
 
@@ -729,7 +785,7 @@ def process_movie_directory(movie_item, dir_path):
 ###############
 
 def main():
-    print("=== Plex NFO Manager (Movies/Series) ===")
+    log("INFO", f"{SCRIPT_NAME} started.")
     print("Dry-run mode:", "ON (no changes)" if DRY_RUN else "OFF (changes will be applied)")
 
     # Ask for search type
@@ -739,17 +795,17 @@ def main():
     # Ask for path (tab completion enabled)
     raw_path = input("Enter path (directory) to operate on (TAB for autocompletion): ").strip()
     if not raw_path:
-        print("No path provided - exiting.")
+        log("INFO", "No path provided. Exiting...")
         return
-    
+
     base_path = normalize_path(raw_path)
-    
+
     if not os.path.exists(base_path):
-        print("Provided path does not exist:", base_path)
+        log("INFO", f"Provided path does not exist ({base_path}). Exiting...")
         return
 
     candidate_name = os.path.basename(base_path)
-    print(f"Detected candidate name from path: '{candidate_name}'")
+    log("INFO", f"Detected candidate name from path: '{candidate_name}'")
 
     action_idx = prompt_choice("Choose how to proceed with this path:", [
         f"Use detected name: '{candidate_name}' (search Plex for this show/movie)",
@@ -764,25 +820,25 @@ def main():
     if action_idx in (0, 1):
         if action_idx == 1:
             name_to_lookup = input("Enter the show/movie name as it appears in Plex: ").strip()
-            
+
             if not name_to_lookup:
-                print("No name entered; exiting.")
+                log("INFO", "No name entered. Exiting...")
                 return
         else:
             name_to_lookup = candidate_name
 
-        print(f"Searching Plex for '{name_to_lookup}' (filter={search_filter}) ...")
-        
+        log("INFO", f"Searching Plex for '{name_to_lookup}' (filter={search_filter}) ...")
+
         candidates = search_plex_for_title(name_to_lookup, search_filter=search_filter)
-        print(f"Found {len(candidates)} Plex candidate(s).")
-        
+        log("DEBUG", f"Found {len(candidates)} Plex candidate(s).")
+
         if not candidates:
-            print("No candidates found in Plex for that name.")
+            log("INFO", "No candidates found in Plex for that name.")
             return
 
         chosen = choose_plex_item(candidates, name_to_lookup)
         if not chosen:
-            print("No selection made; exiting.")
+            log("INFO", "No selection made. Exiting...")
             return
 
         # Determine if show or movie
@@ -800,13 +856,13 @@ def main():
 
     else:
         # Scan everything mode
-        print(f"\nScanning recursively for .nfo files under: {base_path}")
-        
+        log("INFO", f"Scanning recursively for .nfo files under: {base_path}")
+
         nfos = find_all_nfo_files(base_path)
         if not nfos:
-            print("No .nfo files found under the provided path.")
+            LOG("INFO", "No .nfo files found under: {base_path}")
             return
-        
+
         # Reduce to top-level media directories (e.g., /tv/ShowName, not /tv/ShowName/Season 01)
         candidate_dirs = get_top_level_media_dirs(nfos)
         candidate_dirs = reduce_dirs_to_top_level(candidate_dirs)
@@ -818,31 +874,31 @@ def main():
 
         for d in candidate_dirs:
             name_hint = os.path.basename(d)
-            print(f"\nCandidate directory: {d}  (name hint: '{name_hint}')")
-            
+            log("INFO", f"Candidate directory: {d}  (name hint: '{name_hint}')")
+
             candidates = search_plex_for_title(name_hint, search_filter=search_filter)
-            print(f"  Plex candidates found: {len(candidates)}")
-            
+            log("DEBUG", f"Plex candidates found: {len(candidates)}")
+
             if not candidates:
-                print(f"  No Plex match for '{name_hint}' — will report at summary.")
+                log("INFO", f"  No Plex match for '{name_hint}' — will report at summary.")
                 failures.append(("nomatch", d, name_hint))
                 continue
-            
+
             chosen = choose_plex_item(candidates, name_hint)
             if not chosen:
-                print("  No selection; skipping.")
+                log("INFO", "No selection. Skipping...")
                 failures.append(("nochoice", d, name_hint))
                 continue
-            
+
             if hasattr(chosen, "seasons") or getattr(chosen, "type", "").lower() == "show":
                 fails = process_show_directory(chosen, d)
-                
+
                 for f in fails:
                     failures.append(f)
                 processed.append((chosen, d, "show"))
             else:
                 fails = process_movie_directory(chosen, d)
-                
+
                 for f in fails:
                     failures.append(f)
                 processed.append((chosen, d, "movie"))
@@ -851,17 +907,17 @@ def main():
     print("\n\n=== SUMMARY ===")
     print(f"Dry-run: {DRY_RUN}")
     print(f"Processed items: {len(processed)}")
-    
+
     for it, p, typ in processed:
         print(f" - {getattr(it,'title',str(it))} ({typ}) from {p}")
-    
+
     if failures:
         print("\nFailures / items needing attention:")
         for f in failures:
             print(" -", f)
     else:
         print("No failures reported.")
-    
+
     print("\nDone.")
 
 
