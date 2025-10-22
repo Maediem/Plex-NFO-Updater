@@ -3,6 +3,7 @@
 **TODO**: 
 - Update the show itself (not only the episodes)
 - Improve dry-mode
+- Improve automation by providing type and scan-dir
 - Review code
 - Update README
 
