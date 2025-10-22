@@ -2,6 +2,7 @@
 
 **TODO**: 
 - Update the show itself (not only the episodes)
+- Improve dry-mode
 - Review code
 - Update README
 
