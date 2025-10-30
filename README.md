@@ -2,7 +2,7 @@
 
 ---
 
-A Python Script that scans local media directories for .nfo and poster files and applies metadata such as title, summary, actors updates to matching movies or shows (including seasons and episodes).
+A Python Script that scans local media directories for .nfo and applies metadata such as title, summary, actors and posters updates to matching movies or shows (including seasons and episodes).
 
 This README describes what the script, how to configure it, how to run it, etc.
 
