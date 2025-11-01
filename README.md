@@ -292,3 +292,9 @@ A young Naruto struggles with being ostracized by the villagers, including his A
 	<season>1</season>
 	<episode>1</episode>
 ```
+---
+
+## References
+
+- [Official Plex API](https://developer.plex.tv/pms/)
+- [Python Plex API](https://python-plexapi.readthedocs.io/en/latest/modules/mixins.html)
