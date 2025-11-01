@@ -2,12 +2,6 @@
 
 ---
 
-## TODO
-
-* Review code
-
----
-
 A Python Script that scans local media directories for .nfo and applies metadata such as title, summary, actors and posters updates to matching movies or shows (including seasons and episodes).
 
 This README describes what the script, how to configure it, how to run it, etc.
@@ -53,22 +47,23 @@ source .venv/bin/activate
 ```
 3. Install dependencies (if you prefer not to rely on the script auto-installer):
 ```python
-pip install plexapi requests python-dotenv
+pip install plexapi python-dotenv
 ```
 
 ---
 
 ## Configuration
 
-Create a .env file in the same directory (or export environment variables) with:
+It is recommended, at least for Linux users, to create a .env file (<code>chmod 600</code>) in the same directory of the python script with a content like this:
 ```env
 # Example .env
 PLEX_URL=http://your-plex-host:32400
 PLEX_TOKEN=xxxxxxxxxxxxxxxxxxxxxxxxxxxx
 ```
 
-- <code>PLEX_URL</code>: Full base URL to your Plex server (no trailing / required). Common default: http://<plex-host>:32400.
+- <code>PLEX_URL</code>: Full base URL to your Plex server (no trailing / required). Common default: <code>http://<plex-host>:32400</code>.
 - <code>PLEX_TOKEN</code>: Plex token with write permissions; ideally a server/admin token if you expect to edit metadata.
+- If you do not want to use .env file, feel free to change the value <code>None</code> in the CONFIGURATIONS section for the following <code>PLEX_URL = None</code> for your Plex URL and <code>PLEX_TOKEN = None</code>.
 
 ---
 
@@ -91,7 +86,7 @@ python3 plex_nfo_updater.py --help
 
 ---
 
-## Example of NFO format
+## Example/Sample of NFO format
 
 ### Show NFO file content:
 ```xml
