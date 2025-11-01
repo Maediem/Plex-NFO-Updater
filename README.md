@@ -18,12 +18,13 @@ This utility updates Plex Media Server metadata using information provided in NF
 
 ## Features
 
-- Recursively scan a provided directory for .nfo files and poster images.
-- Match local metadata files to Plex items (movies or shows) by media filename basename.
-- Update fields based on NFO files.
-- Upload poster image.
-- Interactive mode available (including tab completion).
-- --dry-run mode to preview changes without applying them.
+- Single python file for the script (some people prefer to use a single file instead of having multiple files to set everything up)
+- Recursively scan a provided directory for .nfo files
+- Match local metadata (from NFO files) to Plex items (movies or shows) by title from NFO
+- Update fields based on NFO files
+- Upload poster image based on NFO filename (see requirements)
+- Interactive mode available (including tab completion)
+- --dry-run mode to preview changes without applying them
 
 ---
 
@@ -31,9 +32,9 @@ This utility updates Plex Media Server metadata using information provided in NF
 
 - Python 3.8+
 - pip to install dependencies (script will attempt to auto-install missing third-party packages)
-- A working Plex server with a writable token (see Configuration)
-- For posters, it is required to have the same name as the NFO files.
-- Running Python Script on the Plex server machine.
+- A working Plex server with a writable token
+- For posters, it is required to have the same name as the NFO files
+- Running Python Script on the Plex server machine
 
 ---
 
