@@ -71,17 +71,17 @@ PLEX_TOKEN=xxxxxxxxxxxxxxxxxxxxxxxxxxxx
 
 Run the script (interactive):
 ```bash
-python3 plex_nfo_updater.py
+python3 plex-nfo-updater.py
 ```
 
 Run the script (automatic):
 ```bash
-python3 plex_nfo_updater.py --scan-path=/path/to/your/directory/to/scan
+python3 plex-nfo-updater.py --scan-path=/path/to/your/directory/to/scan
 ```
 
 Show common flags:
 ```bash
-python3 plex_nfo_updater.py --help
+python3 plex-nfo-updater.py --help
 ```
 
 ---
