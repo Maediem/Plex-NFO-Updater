@@ -30,18 +30,26 @@ This utility updates Plex Media Server metadata using information provided in NF
 
 ## Requirements
 
-- Python 3.8+
-- pip to install dependencies (script will attempt to auto-install missing third-party packages)
-- A working Plex server with a writable token
-- For posters, it is required to have the same name as the NFO files
-- Running Python Script on the Plex server machine
+- pip (the script will attempt to auto-install any missing third-party packages)
+- A working Plex server with a writable API token
+- Script must be run on the same machine as the Plex server
+- Poster files must have the same filename as their corresponding .nfo files
+- Proper directory structure is required, for example:
+
+```
+/path/to/plex/
+├── movies/
+│   └── <movie folder>/
+└── shows/
+    └── <show folder>/
+```
 
 ---
 
 ## Installation
 
 1. Clone or copy the script to a directory.
-2. (Recommended) Create a virtual environment:
+2. (Recommended) Create a virtual environment and activate it:
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
@@ -55,7 +63,7 @@ pip install plexapi python-dotenv
 
 ## Configuration
 
-It is recommended, at least for Linux users, to create a .env file (<code>chmod 600</code>) in the same directory of the python script with a content like this:
+It is recommended, at least for Linux users, to create a .env file (with <code>chmod 600</code>) in the same directory of the python script with a content like this:
 ```env
 # Example .env
 PLEX_URL=http://your-plex-host:32400
@@ -65,6 +73,25 @@ PLEX_TOKEN=xxxxxxxxxxxxxxxxxxxxxxxxxxxx
 - <code>PLEX_URL</code>: Full base URL to your Plex server (no trailing / required). Common default: <code>http://<plex-host>:32400</code>.
 - <code>PLEX_TOKEN</code>: Plex token with write permissions; ideally a server/admin token if you expect to edit metadata.
 - If you do not want to use .env file, feel free to change the value <code>None</code> in the CONFIGURATIONS section for the following <code>PLEX_URL = None</code> for your Plex URL and <code>PLEX_TOKEN = None</code>.
+
+You might need to check the configurations section and change some information such as the <code>ROOT_PLEX_SHOW_DIR</code> and <code>ROOT_PLEX_MOVIE_DIR</code>. This will help getting the top-level directory for the show/movie.
+
+```python
+# ==== CONFIGURATIONS ====
+SCRIPT_NAME = "Plex NFO Updater" # Used in some prints/logs
+LOG_FILE = f"{SCRIPT_NAME.lower().replace(' ', '_')}-{datetime.date.today():%Y-%m-%d}.log" # Log file path
+
+CUSTOM_DELAY = 0.4 # Used to wait after an edit/upload
+
+PLEX_URL = None     # If you don't want to use .env file, change this value to: http://your-plex:32400
+PLEX_TOKEN = None   # If you don't want to use .env file, change this value to your Plex Token
+
+# The script will look for directories inside these (e.g. ".../tv/<show name>" or ".../movies/<movie name>")
+ROOT_PLEX_SHOW_DIR = ["tv", "serie", "series", "show", "shows", "tvshow", "tvshows"]
+ROOT_PLEX_MOVIE_DIR = ["movie", "movies"]
+ALLOW_ART_EXT = ("mp3", "m4a", "jpg", "jpeg", "png", "tbn") # This will be used to search additional files after NFO files (IMPORTANT: Need to have same name as NFO file)
+# ========================
+```
 
 ---
 
