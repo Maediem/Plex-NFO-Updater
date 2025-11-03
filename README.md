@@ -2,15 +2,13 @@
 
 ---
 
-## TODO
-
-- Validation: I made more tests and it seems something isn't working as expected. I will need to review the code (2025-10-03)
-
----
-
 A Python Script that scans local media directories for .nfo and applies metadata such as title, summary, actors and posters updates to matching movies or shows (including seasons and episodes).
 
 This README describes what the script, how to configure it, how to run it, etc.
+
+*IMPORTANT*: Please ensure that your NFO files have the proper information before using the script.
+
+> ✅ This Python script ran successfully on my Linux server without any issues for my serie.
 
 ---
 
@@ -24,7 +22,7 @@ This utility updates Plex Media Server metadata using information provided in NF
 
 - Single python file for the script (some people prefer to use a single file instead of having multiple files to set everything up)
 - Recursively scan a provided directory for .nfo files
-- Match local metadata (from NFO files) to Plex items (movies or shows) by title from NFO
+- Match local metadata (from NFO files) to Plex items (movies or shows) by title from NFO (episodes use season number and episode number and fallback to title).
 - Update fields based on NFO files
 - Upload poster image based on NFO filename (see requirements)
 - Interactive mode available (including tab completion)
