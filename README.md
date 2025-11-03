@@ -2,11 +2,15 @@
 
 ---
 
+## TODO
+
+- Validation: I made more tests and it seems something isn't working as expected. I will need to review the code (2025-10-03)
+
+---
+
 A Python Script that scans local media directories for .nfo and applies metadata such as title, summary, actors and posters updates to matching movies or shows (including seasons and episodes).
 
 This README describes what the script, how to configure it, how to run it, etc.
-
-> ✅ Worked on Linux with my serie with NFO files. I did not try for other type (e.g. movies and music).
 
 ---
 
